@@ -5,10 +5,10 @@
 #include <ESP8266HTTPClient.h>
 #include <ESP8266WiFi.h>
 #include <SPI.h>
+#include <FS.h>
 
 #include "Adafruit_PCD8544.h"
 #include "NewPingESP8266.h"
-#include <FS.h>
 
 const char* timeHost = "worldclockapi.com";
 const char* timeUrl = "/api/json/cet/now";
