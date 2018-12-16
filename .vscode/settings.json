@@ -1,0 +1,7 @@
+{
+    "C_Cpp.clang_format_fallbackStyle": "WebKit",
+    "terminal.integrated.env.linux": {
+        "PATH": "/home/milan/.platformio/penv/bin:/home/milan/.platformio/penv:/home/milan/.local/bin:/home/milan/.yarn/bin:/home/milan/android/sdk/tools:/home/milan/android/sdk/platform-tools:/home/milan/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin:/usr/lib/jvm/java-8-oracle/bin:/usr/lib/jvm/java-8-oracle/db/bin:/usr/lib/jvm/java-8-oracle/jre/bin:/usr/lib/jvm/java-8-oracle/bin:/usr/lib/jvm/java-8-oracle/db/bin:/usr/lib/jvm/java-8-oracle/jre/bin",
+        "PLATFORMIO_CALLER": "vscode"
+    }
+}
