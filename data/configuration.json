@@ -1,5 +1,5 @@
 {
-    "ssid": "skybit.cz-iot",
-    "password" : "skybit.cz.iot.12345",
-    "ifttt_key" : "c200BH92BR7uxmO4avHmHr"
+    "ssid": "put_ssid_here",
+    "password" : "put_password_here",
+    "ifttt_key" : "put_api_key_here"
 }
