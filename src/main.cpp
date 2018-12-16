@@ -1,27 +1,4 @@
-/* Garage checker
- *
- * Connections:
- * WeMos D1 Mini   Nokia 5110    Description
- * (ESP8266)       PCD8544 LCD
- *
- * D2 (GPIO4)      0 RST         Output from ESP to reset display
- * D1 (GPIO5)      1 CE          Output from ESP to chip select/enable display
- * D6 (GPIO12)     2 DC          Output from display data/command to ESP
- * D7 (GPIO13)     3 Din         Output from ESP SPI MOSI to display data input
- * D5 (GPIO14)     4 Clk         Output from ESP SPI clock
- * 3V3 / 5V        5 Vcc         3.3V / 5V from ESP to display
- * D0 (GPIO16)     6 BL          3.3V to turn backlight on, or PWM
- * G               7 Gnd         Ground
- *
- * Dependencies:
- * https://github.com/adafruit/Adafruit-GFX-Library
- * 
- * Adafruit-PCD8544-Nokia-5110-LCD-library is a part of the project to avoid 
- * necessity of dealing with pull request adds ESP8266 support:
- * - https://github.com/adafruit/Adafruit-PCD8544-Nokia-5110-LCD-library/pull/27
- * 
- */
-
+/* Garage checker */
 #include <Adafruit_GFX.h>
 #include <Arduino.h>
 #include <ArduinoJson.h>
@@ -31,19 +8,19 @@
 
 #include "Adafruit_PCD8544.h"
 #include "NewPingESP8266.h"
+#include <FS.h>
 
-const char* ssid = "skybit.cz-iot";
-const char* password = "skybit.cz.iot.12345";
 const char* timeHost = "worldclockapi.com";
 const char* timeUrl = "/api/json/cet/now";
 const int timePort = 80;
 String lastReportedTime;
 char localIP[16];
 
-const char* iftttHost = "";
+// const char* iftttHost = "";
 const int iftttPort = 443;
-const char* garageOpenedUrl = "https://maker.ifttt.com/trigger/garage_door_opened/with/key/c200BH92BR7uxmO4avHmHr";
-const char* garageClosedUrl = "https://maker.ifttt.com/trigger/garage_door_closed/with/key/c200BH92BR7uxmO4avHmHr";
+const char* garageOpenedUrl = "https://maker.ifttt.com/trigger/garage_door_opened/with/key/";
+const char* garageClosedUrl = "https://maker.ifttt.com/trigger/garage_door_closed/with/key/";
+const char* iftttFingerprint = "AA:75:CB:41:2E:D5:F9:97:FF:5D:A0:8B:7D:AC:12:21:08:4B:00:8C";
 
 // LCD pins
 const int8_t RST_PIN = D2;
@@ -54,17 +31,23 @@ const int8_t BL_PIN = D0;
 const int8_t TRIG_PIN = D8;
 const int8_t ECHO_PIN = D3;
 
-const int MEASUREMENTS = 10;
 const int MAX_DISTANCE = 200;
+const int COUNT_TO_SWITCH = 20;
 
 const int STATE_DOOR_UNKNOWN = 1;
 const int STATE_DOOR_CLOSED = 2;
 const int STATE_DOOR_OPENED = 3;
-
-const int COUNT_TO_SWITCH = 20;
-
 int state = STATE_DOOR_UNKNOWN;
+
 int count = 0;
+
+struct Config {
+    char ssid[32];
+    char password[32];
+    char ifftApiKey[32];
+};
+
+Config config;
 
 NewPingESP8266 sonar(TRIG_PIN, ECHO_PIN, MAX_DISTANCE);
 Adafruit_PCD8544 display = Adafruit_PCD8544(DC_PIN, CE_PIN, RST_PIN);
@@ -95,7 +78,14 @@ void reportClosedDoor()
 {
     digitalWrite(BUILTIN_LED, HIGH);
     digitalWrite(BL_PIN, LOW);
-
+    if (WiFi.status() == WL_CONNECTED) {
+        char url[128];
+        sprintf(url, "%s%s", garageClosedUrl, config.ifftApiKey);
+        http.begin(url, iftttFingerprint);
+        int httpCode = http.GET();
+        // Serial.printf("IFTTT request http response code %d\n", httpCode);
+        http.end();
+    }
     lastReportedTime = getTime();
 }
 
@@ -104,12 +94,33 @@ void reportOpenedDoor()
     digitalWrite(BUILTIN_LED, LOW);
     digitalWrite(BL_PIN, HIGH);
     if (WiFi.status() == WL_CONNECTED) {
-        http.begin(garageOpenedUrl, "5D7591BCB3AA376E87658CC1C8928A6D30DE78D6F9D0211846C3B0C05F302251");
+        char url[128];
+        sprintf(url, "%s%s", garageOpenedUrl, config.ifftApiKey);
+        http.begin(url, iftttFingerprint);
         int httpCode = http.GET();
-        Serial.printf("IFTTT request http response code %d\n", httpCode);
+        // Serial.printf("IFTTT request http response code %d\n", httpCode);
         http.end();
     }
     lastReportedTime = getTime();
+}
+
+void parseConfiguration()
+{
+    StaticJsonBuffer<512> jsonBuffer;
+    if (!SPIFFS.begin()) {
+        Serial.println("An Error has occurred while mounting SPIFFS");
+        return;
+    }
+    File file = SPIFFS.open("/configuration.json", "r");
+    if (!file) {
+        Serial.println("There was an error opening the file configuration.json");
+        return;
+    }
+    JsonObject& root = jsonBuffer.parseObject(file);
+    file.close();
+    strlcpy(config.ssid, root["ssid"], sizeof(config.ssid));
+    strlcpy(config.password, root["password"], sizeof(config.password));
+    strlcpy(config.ifftApiKey, root["ifttt_key"], sizeof(config.ifftApiKey));
 }
 
 void setup()
@@ -127,7 +138,9 @@ void setup()
     display.begin();
     display.setContrast(60);
 
-    WiFi.begin(ssid, password);
+    parseConfiguration();
+
+    WiFi.begin(config.ssid, config.password);
     while (WiFi.status() != WL_CONNECTED) {
         delay(500);
         Serial.print(".");
